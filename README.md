@@ -1,5 +1,5 @@
 
-# AutomateAuthenticator
+# Jsoup Example
 
 Automate the login process on the Polar Flow website using Java, HttpURLConnection, and Jsoup.
 
