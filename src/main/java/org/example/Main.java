@@ -5,104 +5,56 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.CookieHandler;
-import java.net.CookieManager;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.io.OutputStream;
+import java.io.*;
+import java.net.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
-    public static void main(String[] args) {
-        try {
-            // Create and set up a cookie manager
-            CookieManager cookieManager = new CookieManager();
-            CookieHandler.setDefault(cookieManager);
 
-            // Create the URL for the login page
-            URL loginPageUrl = new URL("https://flow.polar.com/login");
-
-            // Send a GET request to the login page
-            HttpURLConnection connection = (HttpURLConnection) loginPageUrl.openConnection();
-            connection.setRequestMethod("GET");
-
-            // Read the response from the login page
-            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            String inputLine;
-            StringBuilder response = new StringBuilder();
-
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
+    static String div="<div class=\"sticky\" >#DATA#</div>";
+    static String li="<li id='#DATA#'>"+div+"</li>";
+    public static void main(String[] args) throws IOException, URISyntaxException {
+        java.net.URL url = Main.class.getResource("/tree.html");
+        File file = new File(url.toURI());
+        Document document = Jsoup.parse(file, "UTF-8");
+        //System.out.println(document.body()); ;
+        Map<String, List<String>> map=new HashMap<>();
+        List<String> list=new ArrayList<>();
+        list.add("appxGrid.metadata");
+        list.add("appxGrid.metadata2");
+        list.add("appxGrid.metadata3");
+        List<String> list2=new ArrayList<>();
+        list2.add("helper.save");
+        map.put("appxGrid.loadGrid",list);
+        map.put("appxGrid.metadata2",list2);
+        AtomicInteger count=new AtomicInteger(0);
+        map.entrySet().forEach(e->{
+            if(count.get()==0){
+               String headerdiv= div.replace("#DATA#",e.getKey());
+                Element element=document.select("#header-id").first();
+                element.append(headerdiv);
+                element.attr("id",e.getKey());
             }
-            in.close();
+            //System.out.println(document.html());
+            Element element= document.select("[id="+e.getKey()+"]").first();
+            count.incrementAndGet();
+            StringBuilder builder=new StringBuilder();
+            e.getValue().forEach(data->{
+                builder.append(li.replace("#DATA#",data));
+            });
+           // System.out.println("e.append");
+            if(element!=null)
+            element.append("<ul>"+builder.toString()+"</ul>");
 
-            // Extract the CSRF token
-            String csrfToken = extractCsrfToken(response.toString());
+        });
+        System.out.println(document.outerHtml());
 
-            // Create the URL for the login
-            URL loginUrl = new URL("https://flow.polar.com/login");
-            HttpURLConnection postConnection = (HttpURLConnection) loginUrl.openConnection();
-            postConnection.setRequestMethod("POST");
-            postConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            postConnection.setDoOutput(true);
-
-            // Create the POST parameters
-            // Enter your actual username and password here
-            String postParams = "email=your-email@example.com&password=your-password&csrfToken=" + csrfToken;
-
-            // Send the POST request
-            OutputStream os = postConnection.getOutputStream();
-            os.write(postParams.getBytes());
-            os.flush();
-            os.close();
-
-            // Check the response code of the POST request
-            int responseCode = postConnection.getResponseCode();
-            System.out.println("POST Response Code: " + responseCode);
-
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                // Create the URL for the follow-up page
-                URL followUpUrl = new URL("https://flow.polar.com/diary");
-                HttpURLConnection followUpConnection = (HttpURLConnection) followUpUrl.openConnection();
-                followUpConnection.setRequestMethod("GET");
-
-                // Read the response from the follow-up page
-                BufferedReader inFollowUp = new BufferedReader(new InputStreamReader(followUpConnection.getInputStream()));
-                StringBuilder followUpResponse = new StringBuilder();
-                while ((inputLine = inFollowUp.readLine()) != null) {
-                    followUpResponse.append(inputLine);
-                }
-                inFollowUp.close();
-
-                // Extract the title and username from the follow-up page
-                String followUpTitle = extractTitle(followUpResponse.toString());
-                String followUpUserName = extractUserName(followUpResponse.toString());
-
-                System.out.println("Follow Up Page Title: " + followUpTitle);
-                System.out.println("Follow Up Page Username: " + followUpUserName);
-            } else {
-                System.out.println("Login not successful");
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
 
     }
-
-    // Extract the CSRF token from the HTML content
-    public static String extractCsrfToken(String htmlContent) {
-        Document doc = Jsoup.parse(htmlContent);
-        Element csrfTokenElement = doc.select("input[name=csrfToken]").first();
-
-        if (csrfTokenElement != null) {
-            return csrfTokenElement.val();
-        }
-
-        return "";
-    }
-
     // Extract the title from the HTML content
     public static String extractTitle(String htmlContent) {
         Document doc = Jsoup.parse(htmlContent);
